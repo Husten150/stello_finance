@@ -86,18 +86,27 @@ export class StakingEngine {
     isPaused: boolean;
     protocolFeeBps: number;
   }> {
-    const [totalStaked, totalSupply, exchangeRate, liquidityBuffer, treasuryBalance, isPaused, protocolFeeBps] =
-      await Promise.all([
+    // Use allSettled so one RPC failure doesn't break the entire response
+    const [totalStakedR, totalSupplyR, exchangeRateR, liquidityBufferR, treasuryBalanceR, isPausedR, protocolFeeBpsR] =
+      await Promise.allSettled([
         getTotalStaked(),
         getTotalSupply(),
         getCurrentRate(),
         getLiquidityBuffer(),
-        getTreasuryBalance().catch(() => BigInt(0)),
-        getIsPaused().catch(() => false),
-        getProtocolFeeBps().catch(() => 1000),
+        getTreasuryBalance(),
+        getIsPaused(),
+        getProtocolFeeBps(),
       ]);
 
-    return { totalStaked, totalSupply, exchangeRate, liquidityBuffer, treasuryBalance, isPaused, protocolFeeBps };
+    return {
+      totalStaked: totalStakedR.status === "fulfilled" ? totalStakedR.value : BigInt(0),
+      totalSupply: totalSupplyR.status === "fulfilled" ? totalSupplyR.value : BigInt(0),
+      exchangeRate: exchangeRateR.status === "fulfilled" ? exchangeRateR.value : 1,
+      liquidityBuffer: liquidityBufferR.status === "fulfilled" ? liquidityBufferR.value : BigInt(0),
+      treasuryBalance: treasuryBalanceR.status === "fulfilled" ? treasuryBalanceR.value : BigInt(0),
+      isPaused: isPausedR.status === "fulfilled" ? isPausedR.value : false,
+      protocolFeeBps: protocolFeeBpsR.status === "fulfilled" ? protocolFeeBpsR.value : 1000,
+    };
   }
 
   async getWithdrawalQueueStats() {

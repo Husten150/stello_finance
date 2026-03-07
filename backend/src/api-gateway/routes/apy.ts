@@ -1,11 +1,12 @@
 import { FastifyPluginAsync } from "fastify";
 import { RewardEngine } from "../../reward-engine/index.js";
+import { StakingEngine } from "../../staking-engine/index.js";
 
-export const apyRoutes: FastifyPluginAsync<{ rewardEngine: RewardEngine }> = async (
+export const apyRoutes: FastifyPluginAsync<{ rewardEngine: RewardEngine; stakingEngine?: StakingEngine }> = async (
   fastify,
   opts
 ) => {
-  const { rewardEngine } = opts;
+  const { rewardEngine, stakingEngine } = opts;
 
   /**
    * GET /apy
@@ -35,13 +36,18 @@ export const apyRoutes: FastifyPluginAsync<{ rewardEngine: RewardEngine }> = asy
     const snapshot = await rewardEngine.getLatestSnapshot();
 
     if (!snapshot) {
+      // No snapshot yet — still fetch real exchange rate from contract
+      let exchangeRate = 1.0;
+      if (stakingEngine) {
+        try { exchangeRate = await stakingEngine.getExchangeRate(); } catch { /* fallback 1.0 */ }
+      }
       return {
         currentApr: weightedAPR * 100,
         currentApy: expectedAPY * 100,
         apy7d: 0,
         apy30d: 0,
         apy90d: expectedAPY * 100,
-        exchangeRate: 1.0,
+        exchangeRate,
         totalStaked: "0",
         totalSupply: "0",
         timestamp: new Date().toISOString(),

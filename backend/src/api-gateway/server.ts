@@ -68,6 +68,7 @@ export async function startApiGateway(deps: GatewayDeps) {
   });
   await fastify.register(apyRoutes, {
     rewardEngine: deps.rewardEngine,
+    stakingEngine: deps.stakingEngine,
     prefix: "/api",
   });
 
