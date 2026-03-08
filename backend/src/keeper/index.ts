@@ -103,6 +103,9 @@ export class KeeperBot {
     // Step 1: Check how much interest has accrued on the lending contract
     const pendingInterest = await this.queryLendingAccruedInterest();
 
+    // Log LP pool stats for transparency
+    await this.logLpPoolStats();
+
     if (pendingInterest <= BigInt(0)) {
       console.log("[KeeperBot] No interest to harvest");
       return;
@@ -223,6 +226,35 @@ export class KeeperBot {
       console.log("[KeeperBot] Staking rate recalibrated");
     } catch (err) {
       console.error("[KeeperBot] Recalibrate failed:", err);
+    }
+  }
+
+  // ============================================================
+  // LP Pool stats logging (fees go to LPs via constant product k growth)
+  // ============================================================
+
+  private async logLpPoolStats(): Promise<void> {
+    try {
+      const reserveA = await this.simulateView(
+        config.contracts.lpPoolContractId,
+        "get_reserve_a",
+        []
+      );
+      const reserveB = await this.simulateView(
+        config.contracts.lpPoolContractId,
+        "get_reserve_b",
+        []
+      );
+
+      const a = Number(reserveA ?? 0) / 1e7;
+      const b = Number(reserveB ?? 0) / 1e7;
+      const k = a * b;
+
+      console.log(
+        `[KeeperBot] LP Pool: reserve_a=${a.toFixed(2)} XLM, reserve_b=${b.toFixed(2)} sXLM, k=${k.toFixed(2)} (fees accrue to LPs via k growth)`
+      );
+    } catch (err) {
+      console.warn("[KeeperBot] Could not query LP pool stats:", err);
     }
   }
 

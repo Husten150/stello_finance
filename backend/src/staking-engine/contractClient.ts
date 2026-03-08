@@ -475,6 +475,64 @@ export async function callUnpause(): Promise<string> {
   return executeAdminContractCall("unpause");
 }
 
+/**
+ * Governance parameter helpers — apply on-chain after proposal execution.
+ */
+
+export async function callSetCooldownPeriod(period: number): Promise<string> {
+  return executeAdminContractCall("set_cooldown_period", [
+    nativeToScVal(period, { type: "u64" }),
+  ]);
+}
+
+async function executeLendingAdminCall(
+  method: string,
+  args: ReturnType<typeof nativeToScVal>[] = []
+): Promise<string> {
+  const { keypair, account } = await getSourceAccount();
+  const contract = getLendingContract();
+
+  const op = contract.call(method, ...args);
+
+  const tx = new TransactionBuilder(account, {
+    fee: BASE_FEE,
+    networkPassphrase: getNetworkPassphrase(),
+  })
+    .addOperation(op)
+    .setTimeout(300)
+    .build();
+
+  const preparedTx = await server.prepareTransaction(tx);
+  preparedTx.sign(keypair);
+
+  const result = await server.sendTransaction(preparedTx);
+  if (result.status === "ERROR") {
+    throw new Error(`lending::${method} failed: ${JSON.stringify(result.errorResult)}`);
+  }
+
+  await pollTransaction(result.hash);
+  console.log(`[contractClient] lending::${method} executed: ${result.hash}`);
+  return result.hash;
+}
+
+export async function callUpdateCollateralFactor(bps: number): Promise<string> {
+  return executeLendingAdminCall("update_collateral_factor", [
+    nativeToScVal(bps, { type: "u64" }),
+  ]);
+}
+
+export async function callUpdateBorrowRate(bps: number): Promise<string> {
+  return executeLendingAdminCall("update_borrow_rate", [
+    nativeToScVal(bps, { type: "u64" }),
+  ]);
+}
+
+export async function callUpdateLiquidationThreshold(bps: number): Promise<string> {
+  return executeLendingAdminCall("update_liquidation_threshold", [
+    nativeToScVal(bps, { type: "u64" }),
+  ]);
+}
+
 async function pollTransaction(
   hash: string,
   maxAttempts = 30,

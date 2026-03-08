@@ -28,7 +28,7 @@ export default function Leverage() {
   const [principal, setPrincipal] = useState('1000');
   const [loops, setLoops] = useState('3');
   const [collateralFactor, setCollateralFactor] = useState('0.7');
-  const [stakingAPR, setStakingAPR] = useState('0.06');
+  const [stakingAPR, setStakingAPR] = useState('0');
   const [borrowAPR, setBorrowAPR] = useState('0.04');
   const [result, setResult] = useState<SimResult | null>(null);
   const [optimalResult, setOptimalResult] = useState<OptimalResult | null>(null);
@@ -176,7 +176,7 @@ export default function Leverage() {
         <div className="space-y-2 text-sm text-gray-400">
           <p>Leverage = 1 / (1 - c), where c = collateral factor</p>
           <p>Net Yield = (Leverage x Staking APR) - ((Leverage - 1) x Borrow APR)</p>
-          <p>Example: c=0.7, r=6%, b=4% → Leverage=3.33x, Net Yield=10%</p>
+          <p>Example: c=0.7, r=APR%, b=4% → Leverage=3.33x, Net Yield=(L×r)−((L−1)×b)</p>
         </div>
       </div>
     </div>

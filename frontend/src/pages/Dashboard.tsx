@@ -230,27 +230,19 @@ function ProductCard({
 
 /* ── Main ─────────────────────────────────────────────────────────────────── */
 export default function Dashboard() {
-  const { stats, apy, validators, isLoading } = useProtocol();
+  const { stats, apy, isLoading } = useProtocol();
 
   const tvlXlm  = stats.totalStaked / 1e7;
   const apr     = apy.currentApy > 0 ? apy.currentApy : (apy.apy30d > 0 ? apy.apy30d : 0);
   const er      = stats.exchangeRate;
-  const valCnt  = stats.totalValidators || validators.length;
 
   const aniApr  = useCountUp(apr);
   const aniTvl  = useCountUp(tvlXlm);
   const aniEr   = useCountUp(er);
-  const aniVals = useCountUp(valCnt, 1400);
-
-  const avgUptime = validators.length > 0
-    ? validators.reduce((s, v) => s + v.uptimePercent, 0) / validators.length : 0;
-  const avgComm = validators.length > 0
-    ? validators.reduce((s, v) => s + v.commissionPercent, 0) / validators.length : 0;
 
   const aprDisplay  = isLoading ? '—' : apr > 0 ? `${aniApr.toFixed(2)}%` : '—';
   const tvlDisplay  = isLoading ? '—' : `${fmt(aniTvl, 0)} XLM`;
   const erDisplay   = isLoading ? '—' : aniEr.toFixed(4);
-  const valDisplay  = isLoading ? '—' : String(Math.round(aniVals) || '—');
 
   /* Shared layout helpers */
   const wrap = (maxW = 1100): CSSProperties => ({ maxWidth: maxW, margin: '0 auto', padding: '0 24px' });
@@ -365,7 +357,6 @@ export default function Dashboard() {
             {[
               { label: 'Total XLM Staked', val: tvlDisplay,  sub: stats.tvlUsd > 0 ? `≈ $${fmt(stats.tvlUsd)}` : undefined },
               { label: 'Current APR',       val: aprDisplay,   sub: apy.apy30d > 0 ? `30d: ${apy.apy30d.toFixed(2)}%` : undefined },
-              { label: 'Active Validators', val: valDisplay,   sub: 'Curated · risk-scored' },
               { label: 'Exchange Rate',     val: erDisplay,    sub: '1 sXLM → XLM' },
             ].map((s, i) => (
               <div key={i} className="lido-reveal" style={{
@@ -454,9 +445,9 @@ export default function Dashboard() {
           <div style={{ borderTop: `1px solid ${BR}` }}>
             {([
               { n:'01', title:'Liquid Staking MVP',    desc:'Deposit XLM → mint sXLM. The exchange rate automatically rises as validator rewards accrue. No manual claiming. sXLM = XLM / ER on mint, XLM = sXLM × ER on burn.',           tag:'M1' },
-              { n:'02', title:'Validator Allocation',  desc:'Weighted delegation to a curated set of Stellar validators. APY calculation engine using historical performance. Risk scoring on uptime, commission, and voting power.',         tag:'M2' },
+              { n:'02', title:'Exchange Rate Engine',   desc:'APR/APY derived purely from on-chain exchange rate history. No hardcoded yields — what you see is what the protocol actually earns from lending interest.',                    tag:'M2' },
               { n:'03', title:'Withdrawal Queue',      desc:'Instant redemption via the liquidity buffer (D × α safety factor). Delayed queue with ~24h cooldown. Slashing-aware accounting throughout the entire withdrawal flow.',         tag:'M3' },
-              { n:'04', title:'Risk Engine',           desc:'Real-time validator risk monitoring. Automatic stake rebalancing. Slashing impact model: T_xlm,new = T_xlm,old × (1 − s). Emergency pause logic for protocol safety.',          tag:'M4' },
+              { n:'04', title:'Risk Engine',           desc:'Slashing impact model: T_xlm,new = T_xlm,old × (1 − s). Emergency pause logic for protocol safety. Withdrawal queue recalculation after slashing events.',                    tag:'M4' },
               { n:'05', title:'Capital Efficiency',    desc:'Use sXLM as collateral in the lending protocol. AMM liquidity pool (sXLM/XLM). Leverage loop up to 3.33× with Net Yield = (L×r) − ((L−1)×b). Governance DAO.',               tag:'M5' },
             ] as const).map((f, i, arr) => (
               <NumberedBlock
@@ -506,7 +497,7 @@ export default function Dashboard() {
                 { label: 'You deposit',    val: '120 XLM'   },
                 { label: 'Exchange rate',  val: '1.2000'    },
                 { label: 'sXLM received',  val: '100 sXLM'  },
-                { label: '1yr at 6% APY', val: '≈ 106 XLM' },
+                { label: 'After 1 year',  val: '100 sXLM + yield' },
               ].map((item, i) => (
                 <div key={i} style={{
                   padding: '16px 24px', textAlign: 'center',
@@ -518,69 +509,6 @@ export default function Dashboard() {
                   <p style={{ fontSize: 16, fontWeight: 600, color: W }}>{item.val}</p>
                 </div>
               ))}
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* ══ VALIDATORS ══════════════════════════════════════════════════ */}
-      <section style={{ ...sectionPad(), background: 'rgba(13,13,13,0.85)', ...divider, borderBottom: `1px solid ${BR}` }}>
-        <div style={wrap()}>
-          <div className="lido-two-col">
-            <div className="lido-reveal">
-              <p style={yl}>Decentralised & Secure</p>
-              <h2 style={{ ...sh, marginBottom: 20 }}>
-                Curated<br />
-                <span style={{ color: Y }}>Validator Set</span>
-              </h2>
-              <p style={{ fontSize: 14, color: T2, lineHeight: 1.8, marginBottom: 28 }}>
-                Stake is delegated to{' '}
-                {valCnt > 0 ? valCnt : 'verified'} Stellar validators scored on uptime,
-                commission, voting power, and performance. The Risk Engine auto-rebalances
-                in real time — your APR is always optimised.
-              </p>
-
-              {/* Stat row (Lido border table style) */}
-              <div style={{ border: `1px solid ${BR}`, borderRadius: 6, overflow: 'hidden', display: 'flex' }}>
-                {[
-                  { label: 'Validators', val: String(valCnt || '—') },
-                  { label: 'Avg Uptime', val: validators.length > 0 ? `${avgUptime.toFixed(1)}%` : '—' },
-                  { label: 'Avg Commission', val: validators.length > 0 ? `${avgComm.toFixed(1)}%` : '—' },
-                ].map((s, i) => (
-                  <div key={i} style={{
-                    flex: 1, padding: '16px 18px',
-                    borderRight: i < 2 ? `1px solid ${BR}` : 'none',
-                    background: B,
-                  }}>
-                    <p style={{ fontSize: 20, fontWeight: 700, color: W, marginBottom: 2 }}>{s.val}</p>
-                    <p style={{ fontSize: 11, color: T3 }}>{s.label}</p>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            <div className="lido-reveal" style={{
-              animationDelay: '100ms',
-              background: B, border: `1px solid ${BR}`, borderRadius: 8, padding: 28,
-            }}>
-              <p style={{ fontSize: 10, color: T3, textTransform: 'uppercase', letterSpacing: '0.12em', marginBottom: 20 }}>
-                Weighted Allocation
-              </p>
-              <div style={{ fontFamily: 'monospace', fontSize: 12 }}>
-                <p style={{ color: T2, fontSize: 15, marginBottom: 6 }}>r_protocol = Σ(wᵢ × rᵢ)</p>
-                <p style={{ color: T3, fontSize: 11, marginBottom: 20 }}>w = allocation weight · r = validator APR</p>
-                <div style={{ borderTop: `1px solid ${BR}`, paddingTop: 18, marginBottom: 18 }}>
-                  <p style={{ color: T3, fontSize: 11, marginBottom: 8 }}>Slashing impact:</p>
-                  <p style={{ color: T2, marginBottom: 4 }}>T_xlm,new = T_xlm,old × (1 − s)</p>
-                  <p style={{ color: T2, marginBottom: 8 }}>ER_new = T_xlm,new / T_sxlm</p>
-                  <p style={{ color: T3, fontSize: 11 }}>Users bear proportional loss automatically</p>
-                </div>
-                <div style={{ borderTop: `1px solid ${BR}`, paddingTop: 18 }}>
-                  <p style={{ color: T3, fontSize: 11, marginBottom: 8 }}>Liquidity buffer:</p>
-                  <p style={{ color: T2, marginBottom: 4 }}>Required Buffer = D × α</p>
-                  <p style={{ color: T3, fontSize: 11 }}>D = daily withdrawals · α = 2–3 safety factor</p>
-                </div>
-              </div>
             </div>
           </div>
         </div>
@@ -600,7 +528,6 @@ export default function Dashboard() {
                 { label: 'Exchange Rate',     val: isLoading ? '—' : er.toFixed(4),                        sub: '1 sXLM = ER × XLM' },
                 { label: 'Protocol Fee',      val: `${stats.protocolFeePct}%`,                              sub: 'on rewards' },
                 { label: 'Stakers',           val: isLoading ? '—' : stats.totalStakers > 0 ? fmt(stats.totalStakers, 0) : '—', sub: 'unique wallets' },
-                { label: 'Validators',        val: isLoading ? '—' : String(valCnt || '—'),                sub: 'curated set' },
                 { label: 'Withdrawal',        val: '~24h',                                                  sub: 'delayed queue' },
                 { label: 'Treasury',          val: isLoading ? '—' : `${fmt(stats.treasuryBalance / 1e7)} XLM`, sub: 'collected fees' },
               ] as const).map((s, i) => {
@@ -693,7 +620,7 @@ export default function Dashboard() {
               </p>
             </div>
             {[
-              { heading: 'Protocol',   links: [['Stake','/stake'],['Withdraw','/withdraw'],['Analytics','/analytics'],['Validators','/validators']] },
+              { heading: 'Protocol',   links: [['Stake','/stake'],['Withdraw','/withdraw'],['Analytics','/analytics']] },
               { heading: 'DeFi',       links: [['Lending','/lending'],['Liquidity','/liquidity'],['Leverage','/leverage'],['Restaking','/restaking']] },
               { heading: 'Governance', links: [['Governance','/governance']] },
             ].map((col) => (

@@ -21,16 +21,13 @@ import {
   callUnpause,
   callRecalibrateRate,
 } from "./contractClient.js";
-import { DelegationManager } from "./delegationManager.js";
 import { getEventBus, EventType } from "../event-bus/index.js";
 
 export class StakingEngine {
   private prisma: PrismaClient;
-  private delegationManager: DelegationManager;
 
   constructor(prisma: PrismaClient) {
     this.prisma = prisma;
-    this.delegationManager = new DelegationManager(prisma);
   }
 
   async initialize(): Promise<void> {
@@ -38,26 +35,8 @@ export class StakingEngine {
     startExchangeRateRefresh();
     startWithdrawalQueueProcessor(this.prisma);
 
-    // Subscribe to deposit events → allocate to validators
-    const eventBus = getEventBus();
-    await eventBus.subscribe(EventType.STAKE_EXECUTED, async (data) => {
-      const amount = BigInt(data.xlmAmount);
-      if (amount > BigInt(0)) {
-        await this.delegationManager.allocateDeposit(amount);
-        console.log(`[StakingEngine] Allocated deposit of ${Number(amount) / 1e7} XLM to validators`);
-      }
-    });
-
-    // Subscribe to withdrawal events → deallocate from validators
-    await eventBus.subscribe(EventType.UNSTAKE_EXECUTED, async (data) => {
-      const amount = BigInt(data.xlmAmount);
-      if (amount > BigInt(0)) {
-        await this.delegationManager.deallocateWithdrawal(amount);
-        console.log(`[StakingEngine] Deallocated ${Number(amount) / 1e7} XLM from validators`);
-      }
-    });
-
     // Subscribe to slashing events → recalculate withdrawal queue
+    const eventBus = getEventBus();
     await eventBus.subscribe(EventType.SLASHING_APPLIED, async (data) => {
       const slashAmount = BigInt(data.amount);
       await this.recalculateWithdrawalQueueAfterSlash(slashAmount);
@@ -111,19 +90,6 @@ export class StakingEngine {
 
   async getWithdrawalQueueStats() {
     return getQueueStats(this.prisma);
-  }
-
-  async getDelegationBreakdown() {
-    return this.delegationManager.getDelegationBreakdown();
-  }
-
-  async getWeightedProtocolAPR() {
-    return this.delegationManager.getWeightedProtocolAPR();
-  }
-
-  async rebalanceDelegations() {
-    const totalStaked = await getTotalStaked();
-    return this.delegationManager.rebalanceDelegations(totalStaked);
   }
 
   /**
