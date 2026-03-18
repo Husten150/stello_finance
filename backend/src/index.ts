@@ -7,6 +7,7 @@ import { EventListenerService } from "./event-listener/index.js";
 import { HubbleIndexer } from "./hubble-indexer/index.js";
 import { UserService } from "./user-service/index.js";
 import { MetricsCron } from "./metrics-cron/index.js";
+import { MetricAggregator } from "./metric-aggregator/index.js";
 import { KeeperBot } from "./keeper/index.js";
 import { startApiGateway } from "./api-gateway/server.js";
 import { config } from "./config/index.js";
@@ -34,6 +35,7 @@ async function main() {
   const hubbleIndexer = new HubbleIndexer(prisma);
   const userService = new UserService(prisma);
   const metricsCron = new MetricsCron(prisma);
+  const metricAggregator = new MetricAggregator(prisma);
   const keeperBot = new KeeperBot();
 
   await stakingEngine.initialize();
@@ -43,6 +45,7 @@ async function main() {
   await hubbleIndexer.initialize();
   await userService.initialize();
   await metricsCron.initialize();
+  await metricAggregator.initialize();
   await keeperBot.initialize();
 
   // Start API Gateway
@@ -66,6 +69,7 @@ async function main() {
     await hubbleIndexer.shutdown();
     await userService.shutdown();
     await metricsCron.shutdown();
+    await metricAggregator.shutdown();
     await keeperBot.shutdown();
     await shutdownEventBus();
     await prisma.$disconnect();
