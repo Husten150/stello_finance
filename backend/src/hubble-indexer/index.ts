@@ -239,10 +239,11 @@ export class HubbleIndexer {
 
   private async runBackfillThenLive(): Promise<void> {
     // ── Backfill ──────────────────────────────────────────────────────────────
+    const startLedger = this.globalLastLedger > 0 ? this.globalLastLedger : 1;
     console.log(
-      `[HubbleIndexer] Starting backfill from ledger ${this.globalLastLedger}`
+      `[HubbleIndexer] Starting backfill from ledger ${startLedger}`
     );
-    await this.indexFromLedger(this.globalLastLedger || undefined, true);
+    await this.indexFromLedger(startLedger, true);
     console.log("[HubbleIndexer] Backfill complete, switching to live mode");
 
     // ── Live polling ──────────────────────────────────────────────────────────
@@ -255,7 +256,8 @@ export class HubbleIndexer {
     if (!this.running) return;
     this.pollTimer = setTimeout(async () => {
       try {
-        await this.indexFromLedger(this.globalLastLedger || undefined, false);
+        const ledger = this.globalLastLedger > 0 ? this.globalLastLedger : 1;
+        await this.indexFromLedger(ledger, false);
         this.consecutiveErrors = 0;
       } catch (err) {
         this.consecutiveErrors++;
