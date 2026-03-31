@@ -76,7 +76,7 @@ export function registerErrorHandling(fastify: FastifyInstance): void {
   });
 
   // ── Centralized error handler ───────────────────────────────────────────
-  fastify.setErrorHandler((error, request, reply) => {
+  fastify.setErrorHandler((error: import('@fastify/error').FastifyError, request, reply) => {
     const requestId =
       (request as FastifyRequest & { requestId?: string }).requestId ??
       crypto.randomUUID();
