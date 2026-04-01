@@ -225,28 +225,10 @@ impl GovernanceContract {
         env.storage()
             .instance()
             .set(&DataKey::QuorumBps, &(quorum_bps as i128));
+        // Default reference supply: 0 means quorum check uses absolute minimum
         env.storage()
             .instance()
             .set(&DataKey::ReferenceSupply, &0i128);
-        env.storage()
-            .instance()
-            .set(&DataKey::TimelockDelay, &DEFAULT_TIMELOCK_DELAY);
-        extend_instance(&env);
-    }
-
-    /// Set the emergency guardian. Only callable by admin.
-    pub fn set_guardian(env: Env, guardian: Address) {
-        let admin = read_admin(&env);
-        admin.require_auth();
-        extend_instance(&env);
-        env.storage().instance().set(&DataKey::Guardian, &guardian);
-    }
-
-    /// Update the timelock delay in ledgers. Only callable by admin.
-    pub fn set_timelock_delay(env: Env, delay_ledgers: u32) {
-        let admin = read_admin(&env);
-        admin.require_auth();
-        assert!(delay_ledgers > 0, "delay must be positive");
         extend_instance(&env);
         env.storage()
             .instance()
