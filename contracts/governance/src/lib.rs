@@ -229,10 +229,11 @@ impl GovernanceContract {
         env.storage()
             .instance()
             .set(&DataKey::ReferenceSupply, &0i128);
-        extend_instance(&env);
+        // Set default timelock delay
         env.storage()
             .instance()
-            .set(&DataKey::TimelockDelay, &delay_ledgers);
+            .set(&DataKey::TimelockDelay, &DEFAULT_TIMELOCK_DELAY);
+        extend_instance(&env);
     }
 
     /// Upgrade the contract WASM. Only callable by admin.
@@ -256,6 +257,27 @@ impl GovernanceContract {
         env.storage()
             .instance()
             .set(&DataKey::ReferenceSupply, &supply);
+    }
+
+    /// Update the timelock delay. Only callable by admin.
+    pub fn set_timelock_delay(env: Env, delay_ledgers: u32) {
+        let admin = read_admin(&env);
+        admin.require_auth();
+        assert!(delay_ledgers <= 200_000, "delay too high");
+        extend_instance(&env);
+        env.storage()
+            .instance()
+            .set(&DataKey::TimelockDelay, &delay_ledgers);
+    }
+
+    /// Set or update the guardian address. Only callable by admin.
+    pub fn set_guardian(env: Env, guardian: Address) {
+        let admin = read_admin(&env);
+        admin.require_auth();
+        extend_instance(&env);
+        env.storage()
+            .instance()
+            .set(&DataKey::Guardian, &guardian);
     }
 
     /// Create a new governance proposal. Proposer must hold minimum sXLM balance.
